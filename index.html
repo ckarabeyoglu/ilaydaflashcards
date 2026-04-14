@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sözcük Defteri</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  background:#F6F3EE;
+  color:#1C1917;
+  min-height:100vh;
+  -webkit-tap-highlight-color:transparent;
+}
+:root{
+  --bg:#F6F3EE;
+  --surface:#FFFFFF;
+  --ink:#1C1917;
+  --ink-2:#78716C;
+  --ink-3:#A8A29E;
+  --accent:#C85C38;
+  --accent-bg:#FDF0EB;
+  --green:#16A34A;
+  --green-bg:#F0FDF4;
+  --red:#DC2626;
+  --red-bg:#FEF2F2;
+  --border:#E8E3DA;
+  --shadow:0 4px 24px rgba(0,0,0,0.09);
+  --r:20px;
+  --r-sm:12px;
+  --max:480px;
+}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+.c{width:100%;max-width:var(--max);margin:0 auto;padding:0 20px;}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1.5px solid var(--border);position:sticky;top:0;z-index:10;}
+.topbar-in{max-width:var(--max);margin:0 auto;padding:15px 20px;display:flex;align-items:center;gap:12px;}
+.topbar-title{font-family:'Lora',serif;font-size:17px;font-weight:600;flex:1;}
+.back-btn{background:none;border:none;cursor:pointer;color:var(--ink-2);font-size:22px;padding:4px;line-height:1;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;padding:14px 24px;transition:all .15s;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:active{opacity:.85;transform:scale(.98);}
+.btn-secondary{background:var(--surface);color:var(--ink);border:1.5px solid var(--border);}
+.btn-secondary:active{opacity:.8;}
+.btn-ghost{background:transparent;color:var(--ink-2);}
+.btn-block{width:100%;}
+
+/* SPINNER */
+.spin{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── LOADING ── */
+#screen-loading{align-items:center;justify-content:center;}
+.logo-big{font-family:'Lora',serif;font-size:28px;font-weight:600;color:var(--accent);text-align:center;margin-bottom:32px;}
+.logo-big span{display:block;font-style:italic;font-size:13px;color:var(--ink-3);margin-top:4px;letter-spacing:.04em;}
+
+/* ── LOGIN ── */
+#screen-login{align-items:center;justify-content:center;padding:40px 20px;}
+.login-card{background:var(--surface);border-radius:var(--r);padding:48px 32px;text-align:center;box-shadow:var(--shadow);max-width:360px;width:100%;}
+.login-icon{font-size:52px;margin-bottom:16px;}
+.login-title{font-family:'Lora',serif;font-size:26px;font-weight:600;margin-bottom:10px;}
+.login-sub{color:var(--ink-2);font-size:14px;margin-bottom:36px;line-height:1.65;}
+.google-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:14px 20px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;transition:all .15s;color:var(--ink);}
+.google-btn:hover{background:var(--bg);}
+.google-btn:active{transform:scale(.98);}
+
+/* ── DASHBOARD ── */
+#screen-dashboard{background:var(--bg);}
+.dash-hd{background:var(--surface);border-bottom:1.5px solid var(--border);}
+.dash-hd-in{max-width:var(--max);margin:0 auto;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;}
+.dash-logo{font-family:'Lora',serif;font-size:22px;font-weight:600;}
+.dash-logo em{color:var(--accent);font-style:italic;}
+.user-row{display:flex;align-items:center;gap:8px;}
+.uavatar{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
+.so-btn{background:none;border:none;cursor:pointer;color:var(--ink-3);font-size:12px;font-family:inherit;padding:4px 8px;}
+.dash-body{flex:1;padding:24px 20px;}
+.dash-body-in{max-width:var(--max);margin:0 auto;}
+.sec-label{font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;}
+
+/* SET CARDS */
+.sets-list{display:flex;flex-direction:column;gap:12px;}
+.set-card{background:var(--surface);border-radius:var(--r);padding:18px;box-shadow:0 2px 8px rgba(0,0,0,0.05);cursor:pointer;transition:transform .15s,box-shadow .15s;display:flex;align-items:center;gap:14px;border:1.5px solid transparent;}
+.set-card:active{transform:scale(.98);}
+.set-card:hover{border-color:var(--border);box-shadow:var(--shadow);}
+.sc-body{flex:1;min-width:0;}
+.sc-title{font-family:'Lora',serif;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;}
+.sc-meta{font-size:12px;color:var(--ink-3);margin-bottom:9px;}
+.prog{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:7px;}
+.prog-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s;}
+.sc-stats{display:flex;gap:10px;font-size:12px;}
+.s-known{color:var(--green);font-weight:600;}
+.s-unk{color:var(--ink-3);}
+.sc-btn{flex-shrink:0;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+.sc-btn:active{opacity:.8;}
+
+.empty-state{text-align:center;padding:64px 20px;}
+.empty-icon{font-size:52px;margin-bottom:16px;}
+.empty-t{font-family:'Lora',serif;font-size:18px;font-weight:600;margin-bottom:8px;}
+.empty-s{font-size:14px;color:var(--ink-3);line-height:1.6;}
+
+.fab{position:fixed;bottom:28px;right:24px;width:62px;height:62px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:30px;cursor:pointer;box-shadow:0 4px 20px rgba(200,92,56,.45);display:flex;align-items:center;justify-content:center;transition:transform .15s;z-index:20;line-height:1;}
+.fab:active{transform:scale(.9);}
+@media(min-width:520px){.fab{right:calc(50% - 220px);}}
+
+/* ── NEW SET ── */
+#screen-new-set{background:var(--bg);}
+.form-body{flex:1;padding:24px 20px;}
+.form-body-in{max-width:var(--max);margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+.form-grp{display:flex;flex-direction:column;gap:8px;}
+.form-lbl{font-size:13px;font-weight:600;color:var(--ink-2);}
+.form-in,.form-ta{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;transition:border-color .15s;width:100%;}
+.form-in:focus,.form-ta:focus{border-color:var(--accent);}
+.form-ta{min-height:220px;resize:vertical;line-height:1.65;}
+.form-hint{font-size:12px;color:var(--ink-3);line-height:1.6;}
+.form-foot{padding:20px;background:var(--surface);border-top:1.5px solid var(--border);}
+.form-foot-in{max-width:var(--max);margin:0 auto;}
+
+/* ── PROCESSING ── */
+#screen-processing{align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:var(--bg);}
+.proc-icon{font-size:60px;margin-bottom:24px;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
+.proc-t{font-family:'Lora',serif;font-size:22px;font-weight:600;margin-bottom:10px;}
+.proc-s{color:var(--ink-2);font-size:15px;line-height:1.65;}
+
+/* ── PREVIEW ── */
+#screen-preview{background:var(--bg);}
+.prev-hd{background:var(--surface);border-bottom:1.5px solid var(--border);padding:16px 20px;}
+.prev-hd-in{max-width:var(--max);margin:0 auto;}
+.prev-title{font-family:'Lora',serif;font-size:17px;font-weight:600;margin-bottom:3px;}
+.prev-count{font-size:13px;color:var(--ink-3);}
+.prev-hint{font-size:12px;color:var(--ink-3);margin-top:4px;}
+.prev-list{flex:1;overflow-y:auto;padding:14px 20px;}
+.prev-list-in{max-width:var(--max);margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.pw{background:var(--surface);border-radius:var(--r-sm);padding:15px 16px;display:flex;gap:12px;align-items:flex-start;}
+.pw-info{flex:1;}
+.pw-word{font-size:16px;font-weight:700;margin-bottom:2px;}
+.pw-def{font-size:14px;color:var(--accent);font-weight:600;margin-bottom:4px;}
+.pw-ex{font-size:13px;color:var(--ink-3);font-style:italic;line-height:1.5;}
+.pw-del{background:none;border:none;cursor:pointer;color:var(--ink-3);font-size:20px;padding:2px 4px;line-height:1;flex-shrink:0;transition:color .15s;}
+.pw-del:hover{color:var(--red);}
+.pos-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);background:var(--bg);padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;}
+.prev-foot{padding:20px;background:var(--surface);border-top:1.5px solid var(--border);}
+.prev-foot-in{max-width:var(--max);margin:0 auto;}
+
+/* ── STUDY ── */
+#screen-study{background:var(--bg);}
+.study-hd{background:var(--surface);border-bottom:1.5px solid var(--border);}
+.study-hd-in{max-width:var(--max);margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:12px;}
+.exit-btn{background:none;border:none;cursor:pointer;color:var(--ink-2);font-size:20px;padding:4px;line-height:1;flex-shrink:0;}
+.study-prog-wrap{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.study-prog-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .35s ease;}
+.study-prog-txt{font-size:13px;color:var(--ink-3);font-weight:600;flex-shrink:0;}
+
+.study-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;}
+.card-wrap{perspective:1200px;cursor:pointer;width:100%;max-width:440px;margin-bottom:20px;}
+.flashcard{position:relative;width:100%;height:310px;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.4,0,.2,1);}
+.flashcard.flipped{transform:rotateY(180deg);}
+.card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:24px;padding:32px 28px;display:flex;flex-direction:column;justify-content:center;}
+.card-front{background:var(--surface);box-shadow:0 8px 32px rgba(0,0,0,0.1);}
+.card-back{background:var(--ink);color:#fff;transform:rotateY(180deg);box-shadow:0 8px 32px rgba(0,0,0,0.22);}
+.card-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:14px;}
+.card-back .card-lbl{color:rgba(255,255,255,.35);}
+.card-word{font-family:'Lora',serif;font-size:34px;font-weight:600;margin-bottom:4px;line-height:1.2;}
+.card-pos{font-size:12px;color:var(--ink-3);margin-bottom:14px;font-style:italic;}
+.card-ex{font-size:14px;color:var(--ink-2);font-style:italic;line-height:1.65;}
+.card-def{font-family:'Lora',serif;font-size:30px;font-weight:600;color:#fff;line-height:1.25;}
+
+.flip-hint{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:6px;margin-bottom:20px;}
+.study-actions{display:flex;gap:12px;width:100%;max-width:440px;opacity:0;pointer-events:none;transition:opacity .25s;}
+.study-actions.visible{opacity:1;pointer-events:auto;}
+.btn-unk{flex:1;padding:16px;border-radius:16px;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;background:var(--red-bg);color:var(--red);transition:transform .15s;}
+.btn-unk:active{transform:scale(.96);}
+.btn-kno{flex:1;padding:16px;border-radius:16px;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;background:var(--green-bg);color:var(--green);transition:transform .15s;}
+.btn-kno:active{transform:scale(.96);}
+
+/* ── STUDY COMPLETE ── */
+#screen-study-complete{align-items:center;justify-content:center;padding:40px 20px;background:var(--bg);}
+.done-card{background:var(--surface);border-radius:var(--r);padding:40px 28px;text-align:center;box-shadow:var(--shadow);width:100%;max-width:380px;}
+.done-emoji{font-size:56px;margin-bottom:16px;}
+.done-title{font-family:'Lora',serif;font-size:24px;font-weight:600;margin-bottom:8px;}
+.done-msg{color:var(--ink-2);font-size:15px;margin-bottom:28px;line-height:1.6;}
+.done-stats{display:flex;gap:14px;justify-content:center;margin-bottom:28px;}
+.stat-box{flex:1;padding:18px 12px;border-radius:var(--r-sm);}
+.stat-box.g{background:var(--green-bg);}
+.stat-box.r{background:var(--red-bg);}
+.stat-num{font-size:36px;font-weight:700;line-height:1;margin-bottom:4px;}
+.stat-box.g .stat-num{color:var(--green);}
+.stat-box.r .stat-num{color:var(--red);}
+.stat-lbl{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;}
+.done-acts{display:flex;flex-direction:column;gap:10px;}
+
+/* ── SET DETAIL ── */
+#screen-set-detail{background:var(--bg);}
+.det-hd{background:var(--surface);border-bottom:1.5px solid var(--border);}
+.det-hd-in{max-width:var(--max);margin:0 auto;padding:18px 20px;}
+.det-title-row{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.det-back{background:none;border:none;cursor:pointer;color:var(--ink-2);font-size:22px;padding:4px;line-height:1;}
+.det-title{font-family:'Lora',serif;font-size:19px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.det-del{background:none;border:none;cursor:pointer;color:var(--ink-3);font-size:20px;padding:4px;line-height:1;}
+.det-meta{font-size:13px;color:var(--ink-3);margin-bottom:14px;}
+.det-acts{display:flex;gap:10px;}
+.det-act{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+.det-act:active{opacity:.8;}
+.da-all{background:var(--accent);color:#fff;}
+.da-unk{background:var(--surface);color:var(--ink);border:1.5px solid var(--border);}
+.det-words{flex:1;overflow-y:auto;padding:14px 20px;}
+.det-words-in{max-width:var(--max);margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.dw{background:var(--surface);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;border-left:3px solid transparent;}
+.dw.known{border-left-color:var(--green);}
+.dw-info{flex:1;}
+.dw-word{font-size:15px;font-weight:700;}
+.dw-def{font-size:13px;color:var(--ink-2);margin-top:3px;}
+.dw-chk{color:var(--green);font-size:18px;font-weight:700;}
+
+/* CARD TRANSITION */
+.card-wrap{transition:opacity .2s,transform .2s;}
+</style>
+</head>
+<body>
+
+<!-- ══ LOADING ══ -->
+<div id="screen-loading" class="screen active">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:24px;">
+    <div class="logo-big">Sözcük Defteri<span>IELTS Kelime Çalışması</span></div>
+    <div class="spin"></div>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="screen-login" class="screen">
+  <div class="login-card" style="margin:auto;">
+    <div class="login-icon">📖</div>
+    <h1 class="login-title">Sözcük Defteri</h1>
+    <p class="login-sub">IELTS reading parçalarından yüksek seviye kelimeleri otomatik tespit et, flashcard ile çalış.</p>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Google ile Giriş Yap
+    </button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="screen-dashboard" class="screen">
+  <div class="dash-hd">
+    <div class="dash-hd-in">
+      <div>
+        <div class="dash-logo">Sözcük <em>Defteri</em></div>
+      </div>
+      <div class="user-row">
+        <img id="user-avatar" class="uavatar" src="" alt="">
+        <button class="so-btn" onclick="doSignOut()">Çıkış</button>
+      </div>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="dash-body-in">
+      <p class="sec-label">Çalışma Setleri</p>
+      <div class="sets-list" id="sets-container">
+        <div style="text-align:center;padding:40px;"><div class="spin" style="margin:0 auto;"></div></div>
+      </div>
+    </div>
+  </div>
+  <button class="fab" onclick="showNewSet()">+</button>
+</div>
+
+<!-- ══ NEW SET ══ -->
+<div id="screen-new-set" class="screen">
+  <div class="topbar">
+    <div class="topbar-in">
+      <button class="back-btn" onclick="showScreen('dashboard')">←</button>
+      <span class="topbar-title">Yeni Çalışma Seti</span>
+    </div>
+  </div>
+  <div class="form-body">
+    <div class="form-body-in">
+      <div class="form-grp">
+        <label class="form-lbl">Set Adı <span style="color:var(--ink-3);font-weight:400;">(opsiyonel)</span></label>
+        <input type="text" id="new-set-title" class="form-in" placeholder="ör. Cambridge IELTS 18 — Test 1">
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">İngilizce Okuma Parçası</label>
+        <textarea id="new-set-text" class="form-ta" placeholder="Buraya IELTS reading parçasını yapıştır..."></textarea>
+        <span class="form-hint">Yapay zeka IELTS Band 7-9 seviyesindeki (C1-C2) akademik kelimeleri otomatik tespit eder. İçerik sorularını yoksayar.</span>
+      </div>
+    </div>
+  </div>
+  <div class="form-foot">
+    <div class="form-foot-in">
+      <button class="btn btn-primary btn-block" onclick="extractWords()">✦ Kelimeleri Çıkart</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PROCESSING ══ -->
+<div id="screen-processing" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;padding:40px 20px;">
+    <div class="proc-icon">🔍</div>
+    <h2 class="proc-t">Kelimeler analiz ediliyor...</h2>
+    <p class="proc-s">Yapay zeka yüksek seviye kelimeleri<br>tespit ediyor, bir dakika</p>
+  </div>
+</div>
+
+<!-- ══ PREVIEW ══ -->
+<div id="screen-preview" class="screen">
+  <div class="topbar">
+    <div class="topbar-in">
+      <button class="back-btn" onclick="showScreen('new-set')">←</button>
+      <span class="topbar-title">Kelimeleri Gözden Geçir</span>
+    </div>
+  </div>
+  <div class="prev-hd">
+    <div class="prev-hd-in">
+      <p class="prev-title" id="preview-title"></p>
+      <p class="prev-count" id="preview-count"></p>
+      <p class="prev-hint">İstemediğin kelimeyi kaldırmak için ✕'e tıkla.</p>
+    </div>
+  </div>
+  <div class="prev-list">
+    <div class="prev-list-in" id="preview-words"></div>
+  </div>
+  <div class="prev-foot">
+    <div class="prev-foot-in">
+      <button class="btn btn-primary btn-block" onclick="saveSet()">Kaydet ve Çalışmaya Başla →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STUDY ══ -->
+<div id="screen-study" class="screen">
+  <div class="study-hd">
+    <div class="study-hd-in">
+      <button class="exit-btn" onclick="exitStudy()">✕</button>
+      <div class="study-prog-wrap">
+        <div class="study-prog-fill" id="study-prog-fill"></div>
+      </div>
+      <span class="study-prog-txt" id="study-prog-txt">0 / 0</span>
+    </div>
+  </div>
+  <div class="study-area">
+    <div class="card-wrap" id="card-wrap" onclick="flipCard()">
+      <div class="flashcard" id="flashcard">
+        <div class="card-face card-front">
+          <div class="card-lbl">İNGİLİZCE</div>
+          <div class="card-word" id="card-word"></div>
+          <div class="card-pos" id="card-pos"></div>
+          <div class="card-ex" id="card-ex"></div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-lbl">TÜRKÇE ANLAM</div>
+          <div class="card-def" id="card-def"></div>
+        </div>
+      </div>
+    </div>
+    <p class="flip-hint" id="flip-hint">👆 Kartı çevirmek için dokun</p>
+    <div class="study-actions" id="study-actions">
+      <button class="btn-unk" onclick="markWord(false)">✗ Bilmiyorum</button>
+      <button class="btn-kno" onclick="markWord(true)">✓ Biliyorum</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STUDY COMPLETE ══ -->
+<div id="screen-study-complete" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;">
+    <div class="done-card">
+      <div class="done-emoji" id="done-emoji">🎉</div>
+      <h2 class="done-title">Seans Tamamlandı!</h2>
+      <p class="done-msg" id="done-msg"></p>
+      <div class="done-stats">
+        <div class="stat-box g">
+          <div class="stat-num" id="done-known">0</div>
+          <div class="stat-lbl">Biliyorum</div>
+        </div>
+        <div class="stat-box r">
+          <div class="stat-num" id="done-unk">0</div>
+          <div class="stat-lbl">Tekrar</div>
+        </div>
+      </div>
+      <div class="done-acts">
+        <button class="btn btn-primary btn-block" onclick="restartStudy('unknown')">Bilinmeyenleri Tekrar Çalış</button>
+        <button class="btn btn-secondary btn-block" onclick="restartStudy('all')">Tümünü Baştan Çalış</button>
+        <button class="btn btn-ghost btn-block" onclick="goToDashboard()">Deftere Dön</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SET DETAIL ══ -->
+<div id="screen-set-detail" class="screen">
+  <div class="det-hd">
+    <div class="det-hd-in">
+      <div class="det-title-row">
+        <button class="det-back" onclick="goToDashboard()">←</button>
+        <h2 class="det-title" id="det-title"></h2>
+        <button class="det-del" onclick="deleteCurrentSet()" title="Seti Sil">🗑</button>
+      </div>
+      <p class="det-meta" id="det-meta"></p>
+      <div class="det-acts">
+        <button class="det-act da-all" onclick="startStudy(currentSet.id,'all')">Tümünü Çalış</button>
+        <button class="det-act da-unk" onclick="startStudy(currentSet.id,'unknown')">Bilinmeyenleri Çalış</button>
+      </div>
+    </div>
+  </div>
+  <div class="det-words">
+    <div class="det-words-in" id="det-words"></div>
+  </div>
+</div>
+
+<script>
+// ══ CONFIG ══
+const FB = {
+  apiKey:"AIzaSyBRCSggPRltiqfqHCOXOQ0ic6uQbHafHGQ",
+  authDomain:"ilosh-flashcard.firebaseapp.com",
+  projectId:"ilosh-flashcard",
+  storageBucket:"ilosh-flashcard.firebasestorage.app",
+  messagingSenderId:"817414095850",
+  appId:"1:817414095850:web:4f5a11350b501ae6cf2893"
+};
+const GEM = "AIzaSyAHTIFqExInPdsB5_CJhVsl8TZCqLQb_s0";
+
+firebase.initializeApp(FB);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ══ STATE ══
+let currentUser = null;
+let sets        = [];
+let currentSet  = null;
+let studyQueue  = [];
+let studyIdx    = 0;
+let isFlipped   = false;
+let stats       = { known:0, unk:0 };
+let pending     = null;
+
+// ══ AUTH ══
+auth.onAuthStateChanged(u => {
+  if (u) { currentUser = u; loadDashboard(); }
+  else   { showScreen('login'); }
+});
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+async function signInWithGoogle() {
+  try {
+    await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  } catch(e) {
+    alert('Giriş hatası: ' + e.message);
+  }
+}
+
+async function doSignOut() {
+  if (!confirm('Çıkış yapmak istediğinden emin misin?')) return;
+  sets = []; currentUser = null;
+  await auth.signOut();
+}
+
+// ══ DASHBOARD ══
+async function loadDashboard() {
+  showScreen('dashboard');
+  const av = document.getElementById('user-avatar');
+  if (currentUser.photoURL) av.src = currentUser.photoURL;
+
+  try {
+    const snap = await db.collection('users').doc(currentUser.uid)
+      .collection('sets').orderBy('createdAt','desc').get();
+    sets = snap.docs.map(d => ({id:d.id,...d.data()}));
+    renderSets();
+  } catch(e) {
+    console.error(e);
+    const c = document.getElementById('sets-container');
+    if (e.code === 'permission-denied') {
+      c.innerHTML = `<div class="empty-state"><div class="empty-icon">🔒</div><p class="empty-t">Erişim Hatası</p><p class="empty-s">Firestore güvenlik kuralları henüz ayarlanmamış.<br>Geliştiriciye (Caner'e!) danış.</p></div>`;
+    } else {
+      c.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p class="empty-t">Bir hata oluştu</p><p class="empty-s">${e.message}</p></div>`;
+    }
+  }
+}
+
+function renderSets() {
+  const c = document.getElementById('sets-container');
+  if (!sets.length) {
+    c.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div><p class="empty-t">Henüz çalışma seti yok</p><p class="empty-s">İlk reading parçanı eklemek için<br>aşağıdaki + butonuna tıkla</p></div>`;
+    return;
+  }
+  c.innerHTML = sets.map(s => {
+    const k = s.knownCount||0, t = s.wordCount||0;
+    const pct = t ? Math.round(k/t*100) : 0;
+    const date = s.lastStudied ? fmtDate(s.lastStudied.toDate()) : 'Henüz çalışılmadı';
+    return `
+    <div class="set-card" onclick="openSet('${s.id}')">
+      <div class="sc-body">
+        <h3 class="sc-title">${esc(s.title)}</h3>
+        <div class="sc-meta">${t} kelime · ${date}</div>
+        <div class="prog"><div class="prog-fill" style="width:${pct}%"></div></div>
+        <div class="sc-stats">
+          <span class="s-known">✓ ${k} biliniyor</span>
+          <span class="s-unk">${t-k} öğreniliyor</span>
+        </div>
+      </div>
+      <button class="sc-btn" onclick="event.stopPropagation();startStudy('${s.id}','all')">Çalış</button>
+    </div>`;
+  }).join('');
+}
+
+// ══ OPEN SET DETAIL ══
+function openSet(id) {
+  currentSet = sets.find(s => s.id === id);
+  if (!currentSet) return;
+  renderDetail();
+  showScreen('set-detail');
+}
+
+function renderDetail() {
+  document.getElementById('det-title').textContent = currentSet.title;
+  const k = currentSet.knownCount||0, t = currentSet.wordCount||0;
+  document.getElementById('det-meta').textContent = `${t} kelime · ${k} biliniyor · ${t-k} öğreniliyor`;
+  document.getElementById('det-words').innerHTML = (currentSet.words||[]).map(w => `
+    <div class="dw ${w.known?'known':''}">
+      <div class="dw-info">
+        <span class="dw-word">${esc(w.word)}</span><span class="pos-tag">${w.part_of_speech||''}</span>
+        <div class="dw-def">${esc(w.definition_tr)}</div>
+      </div>
+      ${w.known ? '<span class="dw-chk">✓</span>' : ''}
+    </div>`).join('');
+}
+
+async function deleteCurrentSet() {
+  if (!confirm(`"${currentSet.title}" setini silmek istediğinden emin misin?\nBu işlem geri alınamaz.`)) return;
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('sets').doc(currentSet.id).delete();
+    sets = sets.filter(s => s.id !== currentSet.id);
+    currentSet = null;
+    renderSets();
+    showScreen('dashboard');
+  } catch(e) { alert('Silme hatası: '+e.message); }
+}
+
+// ══ NEW SET ══
+function showNewSet() {
+  document.getElementById('new-set-title').value = '';
+  document.getElementById('new-set-text').value = '';
+  showScreen('new-set');
+}
+
+async function extractWords() {
+  const title = document.getElementById('new-set-title').value.trim();
+  const text  = document.getElementById('new-set-text').value.trim();
+  if (text.length < 80) { alert('Lütfen daha uzun bir metin gir (en az 80 karakter).'); return; }
+  showScreen('processing');
+
+  const prompt = `Aşağıdaki İngilizce okuma parçasından IELTS Band 7-9 (C1-C2) seviyesinde akademik kelimeler çıkar.
+
+KURALLAR:
+- SADECE gerçek vocabulary: noun, verb, adjective, adverb
+- C1-C2 seviyesi: akademik, az kullanılan, bağlamsal anlam gerektiren kelimeler
+- HARİÇ TUT: öz isimler, yer/kişi adları, B1 ve altı basit kelimeler, kısaltmalar, sayılar
+- HARİÇ TUT: soru cümleleri, test soruları, çoktan seçmeli seçenekler — bunlar kelime değildir
+- 10-25 kelime çıkar, en önemli ve yüksek seviyeli olanları seç
+- Kelimeleri kök/sözlük halinde yaz (infinitive / base form)
+- Her kelime için metinden kısa ve gerçek bir örnek cümle kullan (8-15 kelime)
+
+SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
+[{"word":"...","definition_tr":"...","example":"...","part_of_speech":"noun|verb|adjective|adverb"}]
+
+METİN:
+${text.substring(0,5000)}`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEM}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{parts:[{text:prompt}]}],
+          generationConfig:{temperature:0.1, responseMimeType:'application/json'}
+        })
+      }
+    );
+    if (!res.ok) throw new Error(`Gemini API hatası: ${res.status}`);
+    const data = await res.json();
+    const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error('API yanıt vermedi');
+
+    let words = JSON.parse(raw);
+    if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadı');
+
+    words = words
+      .filter(w => w.word && w.definition_tr)
+      .map((w,i) => ({
+        id:`w_${Date.now()}_${i}`,
+        word: w.word.trim().toLowerCase(),
+        definition_tr: w.definition_tr.trim(),
+        example: (w.example||'').trim(),
+        part_of_speech: w.part_of_speech||'word',
+        known: false
+      }));
+
+    const autoTitle = text.split(/\s+/).slice(0,8).join(' ')+'...';
+    pending = {
+      title: title||autoTitle,
+      words, wordCount:words.length, knownCount:0, lastStudied:null
+    };
+    showPreview();
+  } catch(e) {
+    alert('Hata: '+e.message);
+    showScreen('new-set');
+  }
+}
+
+function showPreview() {
+  document.getElementById('preview-title').textContent = pending.title;
+  document.getElementById('preview-count').textContent = `${pending.words.length} kelime çıkarıldı`;
+  document.getElementById('preview-words').innerHTML = pending.words.map(w => `
+    <div class="pw" id="pw-${w.id}">
+      <div class="pw-info">
+        <span class="pw-word">${esc(w.word)}</span><span class="pos-tag">${w.part_of_speech}</span>
+        <div class="pw-def">${esc(w.definition_tr)}</div>
+        ${w.example?`<div class="pw-ex">"${esc(w.example)}"</div>`:''}
+      </div>
+      <button class="pw-del" onclick="removePW('${w.id}')">✕</button>
+    </div>`).join('');
+  showScreen('preview');
+}
+
+function removePW(id) {
+  pending.words = pending.words.filter(w => w.id !== id);
+  pending.wordCount = pending.words.length;
+  document.getElementById('pw-'+id)?.remove();
+  document.getElementById('preview-count').textContent = `${pending.words.length} kelime`;
+}
+
+async function saveSet() {
+  if (!pending||!pending.words.length) { alert('En az 1 kelime olmalı.'); return; }
+  try {
+    const ref = db.collection('users').doc(currentUser.uid).collection('sets').doc();
+    const data = {...pending, createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    await ref.set(data);
+    const ns = {id:ref.id, ...data, createdAt:{toDate:()=>new Date()}};
+    sets.unshift(ns);
+    currentSet = ns;
+    await startStudy(ref.id,'all');
+  } catch(e) { alert('Kaydetme hatası: '+e.message); }
+}
+
+// ══ STUDY ══
+async function startStudy(setId, mode='all') {
+  const s = sets.find(x => x.id === setId);
+  if (!s) return;
+  currentSet = s;
+
+  let words = [...(s.words||[])];
+  if (mode === 'unknown') {
+    words = words.filter(w => !w.known);
+    if (!words.length) {
+      alert('Tüm kelimeler biliniyor! 🎉\nTümünü baştan çalışmak ister misin?');
+      return;
+    }
+  }
+
+  studyQueue = words.sort(() => Math.random()-.5);
+  studyIdx   = 0;
+  isFlipped  = false;
+  stats      = {known:0, unk:0};
+
+  db.collection('users').doc(currentUser.uid).collection('sets').doc(setId)
+    .update({lastStudied:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+
+  renderCard();
+  showScreen('study');
+}
+
+function renderCard() {
+  const w = studyQueue[studyIdx];
+  const n = studyQueue.length;
+  document.getElementById('study-prog-txt').textContent  = `${studyIdx+1} / ${n}`;
+  document.getElementById('study-prog-fill').style.width = `${studyIdx/n*100}%`;
+  document.getElementById('card-word').textContent = w.word;
+  document.getElementById('card-pos').textContent  = w.part_of_speech||'';
+  document.getElementById('card-ex').textContent   = w.example ? `"${w.example}"` : '';
+  document.getElementById('card-def').textContent  = w.definition_tr;
+  isFlipped = false;
+  document.getElementById('flashcard').classList.remove('flipped');
+  document.getElementById('study-actions').classList.remove('visible');
+  document.getElementById('flip-hint').style.display = 'flex';
+}
+
+function flipCard() {
+  if (isFlipped) return;
+  isFlipped = true;
+  document.getElementById('flashcard').classList.add('flipped');
+  document.getElementById('study-actions').classList.add('visible');
+  document.getElementById('flip-hint').style.display = 'none';
+}
+
+async function markWord(known) {
+  const w = studyQueue[studyIdx];
+  w.known = known;
+  if (known) stats.known++; else stats.unk++;
+  const wInSet = currentSet.words.find(x => x.id === w.id);
+  if (wInSet) wInSet.known = known;
+  studyIdx++;
+
+  if (studyIdx >= studyQueue.length) {
+    await saveProgress();
+    showDone();
+    return;
+  }
+
+  // Slide transition
+  const cw = document.getElementById('card-wrap');
+  cw.style.opacity = '0';
+  cw.style.transform = `translateX(${known ? '-40px':'40px'})`;
+  setTimeout(() => {
+    renderCard();
+    cw.style.transition = 'none';
+    cw.style.opacity = '0';
+    cw.style.transform = `translateX(${known ? '40px':'-40px'})`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      cw.style.transition = 'opacity .2s, transform .2s';
+      cw.style.opacity = '1';
+      cw.style.transform = 'translateX(0)';
+    }));
+  }, 200);
+}
+
+async function saveProgress() {
+  const kn = currentSet.words.filter(w => w.known).length;
+  currentSet.knownCount = kn;
+  const i = sets.findIndex(s => s.id === currentSet.id);
+  if (i>=0) sets[i] = {...sets[i], words:currentSet.words, knownCount:kn};
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('sets').doc(currentSet.id)
+      .update({words:currentSet.words, knownCount:kn});
+  } catch(e) { console.error(e); }
+}
+
+function showDone() {
+  const t = studyQueue.length;
+  const pct = t ? Math.round(stats.known/t*100) : 0;
+  document.getElementById('done-known').textContent = stats.known;
+  document.getElementById('done-unk').textContent   = stats.unk;
+  if (pct>=80) {
+    document.getElementById('done-emoji').textContent='🎉';
+    document.getElementById('done-msg').textContent='Harika bir seans! Devam et!';
+  } else if (pct>=50) {
+    document.getElementById('done-emoji').textContent='👍';
+    document.getElementById('done-msg').textContent='İyi gidiyor! Bilinmeyenleri tekrar çalış.';
+  } else {
+    document.getElementById('done-emoji').textContent='💪';
+    document.getElementById('done-msg').textContent='Tekrar çalışmaya devam! Olacak!';
+  }
+  showScreen('study-complete');
+}
+
+async function restartStudy(mode) {
+  await startStudy(currentSet.id, mode);
+}
+
+function exitStudy() {
+  if (studyIdx > 0) saveProgress().catch(()=>{});
+  renderDetail();
+  showScreen('set-detail');
+}
+
+function goToDashboard() {
+  renderSets();
+  showScreen('dashboard');
+}
+
+// ══ HELPERS ══
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(d) {
+  const diff = Math.floor((new Date()-d)/86400000);
+  if (diff===0) return 'Bugün';
+  if (diff===1) return 'Dün';
+  if (diff<7)   return `${diff} gün önce`;
+  return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+}
+</script>
+</body>
+</html>
