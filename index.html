@@ -502,7 +502,7 @@ const FB = {
   messagingSenderId:"817414095850",
   appId:"1:817414095850:web:4f5a11350b501ae6cf2893"
 };
-const GEM = "AIzaSyD4d-d5M63o8BCBNM_aZ5d34d3H1ZfbHOk";
+const GEM = "AIzaSyB2wQ_bKQ_g-tqwBam_z_9I1-xnv0AadMQ";
 
 firebase.initializeApp(FB);
 const auth = firebase.auth();
@@ -656,7 +656,7 @@ METİN:
 ${text.substring(0,5000)}`;
 
   try {
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEM}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEM}`;
     const callGemini = () => fetch(API_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.1}})
