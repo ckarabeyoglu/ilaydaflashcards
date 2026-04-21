@@ -320,6 +320,21 @@ body{
   </div>
 </div>
 
+
+<!-- ══ API KEY SETUP ══ -->
+<div id="screen-apikey" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;">
+    <div class="login-card" style="margin:0;">
+      <div class="login-icon">🔑</div>
+      <h1 class="login-title" style="font-size:20px;">API Anahtarı</h1>
+      <p class="login-sub">Uygulamayı kullanmak için Gemini API key gerekli. Bu cihazda bir kez girilir, kaydedilir.</p>
+      <input type="password" id="api-key-input" class="form-in" placeholder="AIzaSy..." style="margin-bottom:12px;text-align:center;">
+      <button class="btn btn-primary btn-block" onclick="saveApiKey()">Kaydet ve Devam Et</button>
+      <p style="margin-top:12px;font-size:12px;color:var(--ink-3);">aistudio.google.com → API keys</p>
+    </div>
+  </div>
+</div>
+
 <!-- ══ LOGIN ══ -->
 <div id="screen-login" class="screen">
   <div class="login-card" style="margin:auto;">
@@ -344,7 +359,7 @@ body{
         <img id="user-avatar" class="uavatar" src="" alt="">
         <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Gece Modu">🌙</button>
         <button class="theme-btn" onclick="toggleBg()" id="bg-btn" title="Arka Plan">🖼️</button>
-        <button class="so-btn" onclick="doSignOut()">Çıkış</button>
+        <button class="so-btn" onclick="resetApiKey()">🔑</button><button class="so-btn" onclick="doSignOut()">Çıkış</button>
       </div>
     </div>
   </div>
@@ -518,7 +533,7 @@ const FB = {
   messagingSenderId:"817414095850",
   appId:"1:817414095850:web:4f5a11350b501ae6cf2893"
 };
-const GEM = "AIzaSyDYuljm4ew5JFVWM_Kd2WwJ6A5aBxsv9YY";
+let GEM = localStorage.getItem("gemini_key") || "";
 
 firebase.initializeApp(FB);
 const auth = firebase.auth();
@@ -536,9 +551,32 @@ let pending     = null;
 
 // ══ AUTH ══
 auth.onAuthStateChanged(u => {
+  if (!GEM) { showScreen('apikey'); return; }
   if (u) { currentUser = u; loadDashboard(); }
   else   { showScreen('login'); }
 });
+
+
+function resetApiKey() {
+  if (!confirm('API key sıfırlansın mı?')) return;
+  localStorage.removeItem('gemini_key');
+  GEM = '';
+  showScreen('apikey');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key || !key.startsWith('AIza')) {
+    alert('Geçerli bir API key gir (AIza... ile başlamalı)');
+    return;
+  }
+  GEM = key;
+  localStorage.setItem('gemini_key', key);
+  // Now check auth state
+  const u = auth.currentUser;
+  if (u) { loadDashboard(); }
+  else   { showScreen('login'); }
+}
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
