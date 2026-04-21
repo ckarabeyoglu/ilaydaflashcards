@@ -113,6 +113,10 @@ body{
 [data-theme="dark"][data-bg="photo"]::before {
   opacity: 0.18;
 }
+
+.photo-upload-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);border:2px dashed var(--border);border-radius:var(--r-sm);padding:18px;font-size:15px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s;text-align:center;}
+.photo-upload-btn:hover{border-color:var(--accent);color:var(--accent);}
+.photo-preview{width:100%;border-radius:var(--r-sm);margin-top:8px;max-height:200px;object-fit:cover;display:none;}
 /* TOPBAR */
 .topbar{background:var(--surface);border-bottom:1.5px solid var(--border);position:sticky;top:0;z-index:10;}
 .topbar-in{max-width:var(--max);margin:0 auto;padding:15px 20px;display:flex;align-items:center;gap:12px;}
@@ -220,8 +224,14 @@ body{
 .pw-word{font-size:16px;font-weight:700;margin-bottom:2px;}
 .pw-def{font-size:14px;color:var(--accent);font-weight:600;margin-bottom:4px;}
 .pw-ex{font-size:13px;color:var(--ink-3);font-style:italic;line-height:1.5;}
-.pw-del{background:none;border:none;cursor:pointer;color:var(--ink-3);font-size:20px;padding:2px 4px;line-height:1;flex-shrink:0;transition:color .15s;}
-.pw-del:hover{color:var(--red);}
+
+.pw-check-wrap{display:flex;align-items:center;flex-shrink:0;cursor:pointer;}
+.pw-chk{display:none;}
+.pw-chk-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.pw-chk:checked + .pw-chk-box{background:var(--accent);border-color:var(--accent);}
+.pw-chk:checked + .pw-chk-box::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.pw{gap:10px;}
+
 .pos-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);background:var(--bg);padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;}
 .prev-foot{padding:20px;background:var(--surface);border-top:1.5px solid var(--border);}
 .prev-foot-in{max-width:var(--max);margin:0 auto;}
@@ -368,6 +378,14 @@ body{
         <textarea id="new-set-text" class="form-ta" placeholder="Buraya IELTS reading parçasını yapıştır..."></textarea>
         <span class="form-hint">Yapay zeka IELTS Band 7-9 seviyesindeki (C1-C2) akademik kelimeleri otomatik tespit eder. İçerik sorularını yoksayar.</span>
       </div>
+      <div class="form-grp">
+        <label class="form-lbl">veya Fotoğraf Yükle</label>
+        <label class="photo-upload-btn" for="photo-input">
+          📷 Kitap / Metin Fotoğrafı Seç
+          <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoUpload(event)">
+        </label>
+        <span class="form-hint">Fotoğraftaki metin otomatik okunur, metin kutusuna gerek kalmaz.</span>
+      </div>
     </div>
   </div>
   <div class="form-foot">
@@ -426,13 +444,11 @@ body{
     <div class="card-wrap" id="card-wrap" onclick="flipCard()">
       <div class="flashcard" id="flashcard">
         <div class="card-face card-front">
-          <div class="card-lbl">İNGİLİZCE</div>
           <div class="card-word" id="card-word"></div>
           <div class="card-pos" id="card-pos"></div>
           <div class="card-ex" id="card-ex"></div>
         </div>
         <div class="card-face card-back">
-          <div class="card-lbl">TÜRKÇE ANLAM</div>
           <div class="card-def" id="card-def"></div>
         </div>
       </div>
@@ -502,7 +518,7 @@ const FB = {
   messagingSenderId:"817414095850",
   appId:"1:817414095850:web:4f5a11350b501ae6cf2893"
 };
-const GEM = "AIzaSyBi-uQpv2v4DQaHxNVUOHms0eGp9jWdacg";
+const GEM = "AIzaSyB2wQ_bKQ_g-tqwBam_z_9I1-xnv0AadMQ";
 
 firebase.initializeApp(FB);
 const auth = firebase.auth();
@@ -632,6 +648,87 @@ function showNewSet() {
   showScreen('new-set');
 }
 
+
+async function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Show preview
+  const title = document.getElementById('new-set-title');
+  if (!title.value) title.value = file.name.replace(/\.[^/.]+$/, '');
+  
+  // Convert to base64
+  const base64 = await new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+  
+  const mimeType = file.type || 'image/jpeg';
+  showScreen('processing');
+  
+  const prompt = `Bu görüntüdeki İngilizce metni oku ve IELTS Band 7-9 (C1-C2) seviyesinde akademik kelimeler çıkar.
+
+KURALLAR:
+- SADECE gerçek vocabulary: noun, verb, adjective, adverb
+- C1-C2 seviyesi: akademik, az kullanılan, bağlamsal anlam gerektiren kelimeler
+- HARİÇ TUT: öz isimler, yer/kişi adları, B1 ve altı basit kelimeler, kısaltmalar, sayılar
+- HARİÇ TUT: soru cümleleri, test soruları
+- 10-25 kelime çıkar
+- Kelimeleri kök/sözlük halinde yaz
+- Her kelime için metinden kısa ve gerçek bir örnek cümle kullan (8-15 kelime)
+
+SADECE aşağıdaki JSON formatında yanıt ver:
+[{"word":"...","definition_tr":"...","example":"...","part_of_speech":"noun|verb|adjective|adverb"}]`;
+
+  try {
+    const res = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=\${GEM}\`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        contents: [{parts: [
+          {inline_data: {mime_type: mimeType, data: base64}},
+          {text: prompt}
+        ]}],
+        generationConfig: {temperature: 0.1}
+      })
+    });
+    
+    if (res.status === 429) {
+      document.querySelector('.proc-s').innerHTML = 'Çok fazla istek, 15 saniye bekleniyor...';
+      await new Promise(r => setTimeout(r, 15000));
+      return handlePhotoUpload(event);
+    }
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(\`Gemini \${res.status}: \${data.error?.message||''}\`);
+    
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error('API boş yanıt döndü');
+    
+    let words = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadı');
+    
+    words = words.filter(w => w.word && w.definition_tr).map((w,i) => ({
+      id: \`w_\${Date.now()}_\${i}\`,
+      word: w.word.trim().toLowerCase(),
+      definition_tr: w.definition_tr.trim(),
+      example: (w.example||'').trim(),
+      part_of_speech: w.part_of_speech||'word',
+      known: false,
+      selected: true
+    }));
+    
+    const autoTitle = title.value || 'Fotoğraf ' + new Date().toLocaleDateString('tr-TR');
+    pending = {title: autoTitle, words, wordCount: words.length, knownCount: 0, lastStudied: null};
+    showPreview();
+  } catch(e) {
+    alert('Hata: ' + e.message);
+    showScreen('new-set');
+  }
+}
+
 async function extractWords() {
   const title = document.getElementById('new-set-title').value.trim();
   const text  = document.getElementById('new-set-text').value.trim();
@@ -656,34 +753,27 @@ METİN:
 ${text.substring(0,5000)}`;
 
   try {
-    const models = ['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'];
-    const callModel = (model) => fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEM}`,
-      { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.1}}) }
-    );
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEM}`;
+    const callGemini = () => fetch(API_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.1}})
+    });
 
-    let raw = null, data = null, res = null;
-    for (const model of models) {
-      document.querySelector('.proc-s').innerHTML = `Analiz ediliyor... (${model})`;
-      res = await callModel(model);
-      if (res.status === 429) {
-        // Bu modelin kotası dolmuş, sonraki modeli dene
-        continue;
-      }
-      data = await res.json();
-      if (res.ok) {
-        raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        break;
-      }
-      // 429 dışı hata ise mesajı kaydet ve sonrakini dene
+    let raw = null;
+    let res = await callGemini();
+    if (res.status === 429) {
+      // Rate limited — wait 15s and retry
+      document.querySelector('.proc-s').innerHTML = 'Çok fazla istek, 15 saniye bekleniyor...<br>Lütfen bekle';
+      await new Promise(r => setTimeout(r, 15000));
+      document.querySelector('.proc-s').innerHTML = 'Tekrar deneniyor...';
+      res = await callGemini();
     }
-    if (!res || !res.ok) throw new Error(`Gemini hata: ${data?.error?.message || 'Tüm modellerin kotası dolmuş. Lütfen daha sonra tekrar deneyin.'}`)
+    const data = await res.json();
+    if (!res.ok) throw new Error(`Gemini ${res.status}: ${data.error?.message||''}`);
+    raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!raw) throw new Error('API boş yanıt döndü: ' + JSON.stringify(data).substring(0,200));
 
-    const jsonMatch = raw.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('JSON bulunamadı: ' + raw.substring(0,200));
-    let words = JSON.parse(jsonMatch[0]);
+    let words = JSON.parse(raw);
     if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadı');
 
     words = words
@@ -711,27 +801,43 @@ ${text.substring(0,5000)}`;
 
 function showPreview() {
   document.getElementById('preview-title').textContent = pending.title;
-  document.getElementById('preview-count').textContent = `${pending.words.length} kelime çıkarıldı`;
+  document.getElementById('preview-count').textContent = `${pending.words.length} kelimeden ${pending.words.length} tanesi seçili`;
   document.getElementById('preview-words').innerHTML = pending.words.map(w => `
     <div class="pw" id="pw-${w.id}">
+      <label class="pw-check-wrap">
+        <input type="checkbox" class="pw-chk" id="chk-${w.id}" checked onchange="togglePW('${w.id}', this.checked)">
+        <span class="pw-chk-box"></span>
+      </label>
       <div class="pw-info">
         <span class="pw-word">${esc(w.word)}</span><span class="pos-tag">${w.part_of_speech}</span>
         <div class="pw-def">${esc(w.definition_tr)}</div>
         ${w.example?`<div class="pw-ex">"${esc(w.example)}"</div>`:''}
       </div>
-      <button class="pw-del" onclick="removePW('${w.id}')">✕</button>
     </div>`).join('');
   showScreen('preview');
+}
+
+function togglePW(id, checked) {
+  const el = document.getElementById('pw-'+id);
+  if (el) el.style.opacity = checked ? '1' : '0.35';
+  const w = pending.words.find(x => x.id === id);
+  if (w) w.selected = checked;
+  const sel = pending.words.filter(x => x.selected !== false).length;
+  document.getElementById('preview-count').textContent = `${pending.words.length} kelimeden ${sel} tanesi seçili`;
 }
 
 function removePW(id) {
   pending.words = pending.words.filter(w => w.id !== id);
   pending.wordCount = pending.words.length;
   document.getElementById('pw-'+id)?.remove();
-  document.getElementById('preview-count').textContent = `${pending.words.length} kelime`;
+  const sel = pending.words.filter(x => x.selected !== false).length;
+  document.getElementById('preview-count').textContent = `${pending.words.length} kelimeden ${sel} tanesi seçili`;
 }
 
 async function saveSet() {
+  const selected = pending.words.filter(w => w.selected !== false);
+  if (!selected.length) { alert('En az 1 kelime seçili olmalı.'); return; }
+  pending.words = selected;
   if (!pending||!pending.words.length) { alert('En az 1 kelime olmalı.'); return; }
   try {
     const ref = db.collection('users').doc(currentUser.uid).collection('sets').doc();
@@ -787,8 +893,9 @@ function renderCard() {
 }
 
 function flipCard() {
-  isFlipped = !isFlipped;
-  document.getElementById('flashcard').classList.toggle('flipped', isFlipped);
+  if (isFlipped) return;
+  isFlipped = true;
+  document.getElementById('flashcard').classList.add('flipped');
   document.getElementById('study-actions').classList.add('visible');
   document.getElementById('flip-hint').style.display = 'none';
 }
