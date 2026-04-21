@@ -732,7 +732,11 @@ async function handlePhotoUpload(event) {
     var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
     if (!raw) throw new Error('API bos yanit dondu');
 
-    var words = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    var raw3 = raw.trim();
+    var startIdx = raw3.indexOf('[');
+    var endIdx = raw3.lastIndexOf(']');
+    if (startIdx === -1 || endIdx === -1) throw new Error('JSON bulunamadi: ' + raw3.substring(0,100));
+    var words = JSON.parse(raw3.substring(startIdx, endIdx + 1));
     if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadi');
 
     words = words.filter(function(w) { return w.word && w.definition_tr; }).map(function(w, i) {
@@ -801,7 +805,10 @@ ${text.substring(0,5000)}`;
     raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!raw) throw new Error('API boş yanıt döndü: ' + JSON.stringify(data).substring(0,200));
 
-    let words = JSON.parse(raw);
+    let raw2 = raw.trim();
+    const s2 = raw2.indexOf('['), e2 = raw2.lastIndexOf(']');
+    if (s2 === -1 || e2 === -1) throw new Error('JSON bulunamadi');
+    let words = JSON.parse(raw2.substring(s2, e2+1));
     if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadı');
 
     words = words
