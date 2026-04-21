@@ -547,12 +547,7 @@ function renderSets(){
     c.innerHTML="<div class='empty-state'><div class='empty-icon'>📚</div><p class='empty-t'>Henüz çalışma seti yok</p><p class='empty-s'>İlk reading parçanı eklemek için<br>aşağıdaki + butonuna tıkla</p></div>";
     return;
   }
-  c.innerHTML=sets.map(s=>{
-    const k=s.knownCount||0,t=s.wordCount||0,pct=t?Math.round(k/t*100):0;
-    const date=s.lastStudied?fmtDate(s.lastStudied.toDate()):"Henüz çalışılmadı";
-    const oc1='openSet("'+s.id+'")';const oc2='event.stopPropagation();startStudy("'+s.id+'","all")';
-    return '<div class="set-card" onclick="'+oc1+'"><div class="sc-body"><h3 class="sc-title">'+esc(s.title)+'</h3><div class="sc-meta">'+t+' kelime · '+date+'</div><div class="prog"><div class="prog-fill" style="width:'+pct+'%"></div></div><div class="sc-stats"><span class="s-known">✓ '+k+' biliniyor</span><span class="s-unk">'+(t-k)+' öğreniliyor</span></div></div><button class="sc-btn" onclick="'+oc2+'">Çalış</button></div>';
-  }).join("");
+  c.innerHTML=sets.map(s=>buildSetCard(s)).join("");
 }
 
 // SET DETAIL
@@ -565,9 +560,7 @@ function renderDetail(){
   document.getElementById("det-title").textContent=currentSet.title;
   const k=currentSet.knownCount||0,t=currentSet.wordCount||0;
   document.getElementById("det-meta").textContent=t+" kelime · "+k+" biliniyor · "+(t-k)+" öğreniliyor";
-  document.getElementById("det-words").innerHTML=(currentSet.words||[]).map(w=>
-    "<div class='dw "+(w.known?"known":"")+"'><div class='dw-info'><span class='dw-word'>"+esc(w.word)+"</span><span class='pos-tag'>"+(w.part_of_speech||"")+"</span><div class='dw-def'>"+esc(w.definition_tr)+"</div></div>"+(w.known?"<span class='dw-chk'>✓</span>":"")+"</div>"
-  ).join("");
+  document.getElementById("det-words").innerHTML=(currentSet.words||[]).map(function(w){ var d=document.createElement("div"); d.className="dw"+(w.known?" known":""); d.innerHTML="<div class='dw-info'><span class='dw-word'>"+esc(w.word)+"</span><span class='pos-tag'>"+(w.part_of_speech||"")+"</span><div class='dw-def'>"+esc(w.definition_tr)+"</div></div>"+(w.known?"<span class='dw-chk'>✓</span>":""); return d.outerHTML; }).join("");
 }
 async function deleteCurrentSet(){
   if(!confirm('"'+currentSet.title+'" setini silmek istediğinden emin misin?\nBu işlem geri alınamaz.')) return;
@@ -800,12 +793,53 @@ function finishExtraction(raw, titleOverride){
   }catch(e){ alert("Parse hatasi: "+e.message); showScreen("new-set"); }
 }
 
+
+function buildSetCard(s) {
+  var k = s.knownCount||0, t = s.wordCount||0;
+  var pct = t ? Math.round(k/t*100) : 0;
+  var date = s.lastStudied ? fmtDate(s.lastStudied.toDate()) : "Henüz çalışılmadı";
+  var d = document.createElement("div");
+  d.className = "set-card";
+  d.onclick = function() { openSet(s.id); };
+  d.innerHTML = "<div class='sc-body'><h3 class='sc-title'>" + esc(s.title) + "</h3><div class='sc-meta'>" + t + " kelime · " + date + "</div><div class='prog'><div class='prog-fill' style='width:" + pct + "%'></div></div><div class='sc-stats'><span class='s-known'>✓ " + k + " biliniyor</span><span class='s-unk'>" + (t-k) + " öğreniliyor</span></div></div>";
+  var btn = document.createElement("button");
+  btn.className = "sc-btn";
+  btn.textContent = "Çalış";
+  btn.onclick = function(e) { e.stopPropagation(); startStudy(s.id, "all"); };
+  d.appendChild(btn);
+  return d.outerHTML;
+}
+
+
+function buildPW(w) {
+  var d = document.createElement("div");
+  d.className = "pw";
+  d.id = "pw-" + w.id;
+  var label = document.createElement("label");
+  label.className = "pw-check-wrap";
+  var chk = document.createElement("input");
+  chk.type = "checkbox";
+  chk.className = "pw-chk";
+  chk.id = "chk-" + w.id;
+  chk.checked = true;
+  chk.onchange = function() { togglePW(w.id, this.checked); };
+  var box = document.createElement("span");
+  box.className = "pw-chk-box";
+  label.appendChild(chk);
+  label.appendChild(box);
+  var info = document.createElement("div");
+  info.className = "pw-info";
+  info.innerHTML = "<span class='pw-word'>" + esc(w.word) + "</span><span class='pos-tag'>" + (w.part_of_speech||"") + "</span><div class='pw-def'>" + esc(w.definition_tr) + "</div>" + (w.example ? "<div class='pw-ex'>&#34;" + esc(w.example) + "&#34;</div>" : "");
+  d.appendChild(label);
+  d.appendChild(info);
+  return d.outerHTML;
+}
+
 function showPreview(){
   document.getElementById("preview-title").textContent=pending.title;
   updatePreviewCount();
   document.getElementById("preview-words").innerHTML=pending.words.map(w=>
-    "<div class='pw' id='pw-"+w.id+"'><label class='pw-check-wrap'><input type='checkbox' class='pw-chk' id='chk-"+w.id+"' checked onchange="togglePW('"+w.id+"',this.checked)"><span class='pw-chk-box'></span></label><div class='pw-info'><span class='pw-word'>"+esc(w.word)+"</span><span class='pos-tag'>"+w.part_of_speech+"</span><div class='pw-def'>"+esc(w.definition_tr)+"</div>"+(w.example?"<div class='pw-ex'>""+esc(w.example)+""</div>":"")+"</div></div>"
-  ).join("");
+  document.getElementById("preview-words").innerHTML=pending.words.map(w=>buildPW(w)).join("");
   showScreen("preview");
 }
 function updatePreviewCount(){
