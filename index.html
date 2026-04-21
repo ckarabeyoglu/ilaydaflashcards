@@ -550,7 +550,8 @@ function renderSets(){
   c.innerHTML=sets.map(s=>{
     const k=s.knownCount||0,t=s.wordCount||0,pct=t?Math.round(k/t*100):0;
     const date=s.lastStudied?fmtDate(s.lastStudied.toDate()):"Henüz çalışılmadı";
-    return "<div class='set-card' onclick="openSet('"+s.id+"')"><div class='sc-body'><h3 class='sc-title'>"+esc(s.title)+"</h3><div class='sc-meta'>"+t+" kelime · "+date+"</div><div class='prog'><div class='prog-fill' style='width:"+pct+"%'></div></div><div class='sc-stats'><span class='s-known'>✓ "+k+" biliniyor</span><span class='s-unk'>"+(t-k)+" öğreniliyor</span></div></div><button class='sc-btn' onclick="event.stopPropagation();startStudy('"+s.id+"','all')">Çalış</button></div>";
+    const oc1='openSet("'+s.id+'")';const oc2='event.stopPropagation();startStudy("'+s.id+'","all")';
+    return '<div class="set-card" onclick="'+oc1+'"><div class="sc-body"><h3 class="sc-title">'+esc(s.title)+'</h3><div class="sc-meta">'+t+' kelime · '+date+'</div><div class="prog"><div class="prog-fill" style="width:'+pct+'%"></div></div><div class="sc-stats"><span class="s-known">✓ '+k+' biliniyor</span><span class="s-unk">'+(t-k)+' öğreniliyor</span></div></div><button class="sc-btn" onclick="'+oc2+'">Çalış</button></div>';
   }).join("");
 }
 
