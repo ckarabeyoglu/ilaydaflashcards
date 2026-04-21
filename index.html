@@ -928,11 +928,17 @@ function renderCard() {
 }
 
 function flipCard() {
-  if (isFlipped) return;
-  isFlipped = true;
-  document.getElementById('flashcard').classList.add('flipped');
-  document.getElementById('study-actions').classList.add('visible');
-  document.getElementById('flip-hint').style.display = 'none';
+  isFlipped = !isFlipped;
+  const card = document.getElementById('flashcard');
+  if (isFlipped) {
+    card.classList.add('flipped');
+    document.getElementById('study-actions').classList.add('visible');
+    document.getElementById('flip-hint').style.display = 'none';
+  } else {
+    card.classList.remove('flipped');
+    document.getElementById('study-actions').classList.remove('visible');
+    document.getElementById('flip-hint').style.display = 'flex';
+  }
 }
 
 async function markWord(known) {
