@@ -533,7 +533,7 @@ const FB = {
   messagingSenderId:"817414095850",
   appId:"1:817414095850:web:4f5a11350b501ae6cf2893"
 };
-let GEM = localStorage.getItem("gemini_key") || "AIzaSyAxiZgS6p8uXi876ztEbJoFgb1fkUfdv50";
+let GEM = localStorage.getItem("gemini_key") || "";
 
 firebase.initializeApp(FB);
 const auth = firebase.auth();
@@ -707,7 +707,7 @@ async function handlePhotoUpload(event) {
   const prompt = 'Bu fotograftaki Ingilizce metni oku ve IELTS Band 7-9 (C1-C2) seviyesinde akademik kelimeler cikar.\n\nKURALLAR:\n- SADECE gercek vocabulary: noun, verb, adjective, adverb\n- C1-C2 seviyesi akademik kelimeler\n- HARIC TUT: oz isimler, B1 ve alti basit kelimeler, soru cumleleri\n- 10-25 kelime cikar, kök/sozluk halinde yaz\n- Her kelime icin metinden ornek cumle\n\nSADECE JSON formatinda yanit ver:\n[{"word":"...","definition_tr":"...","example":"...","part_of_speech":"noun|verb|adjective|adverb"}]';
 
   try {
-    var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEM;
+    var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=' + GEM;
     var res = await fetch(apiUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -774,14 +774,14 @@ KURALLAR:
 - Kelimeleri kök/sözlük halinde yaz (infinitive / base form)
 - Her kelime için metinden kısa ve gerçek bir örnek cümle kullan (8-15 kelime)
 
-SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey yazma:
+SADECE ve SADECE geçerli bir JSON dizisi döndür. Başka hiçbir şey yazma. Açıklama yapma. Markdown kullanma. Sadece köşeli parantezle başlayan JSON:
 [{"word":"...","definition_tr":"...","example":"...","part_of_speech":"noun|verb|adjective|adverb"}]
 
 METİN:
 ${text.substring(0,5000)}`;
 
   try {
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEM}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=${GEM}`;
     const callGemini = () => fetch(API_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.1}})
