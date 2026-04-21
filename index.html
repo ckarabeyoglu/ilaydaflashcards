@@ -570,7 +570,7 @@ function renderDetail(){
   ).join("");
 }
 async function deleteCurrentSet(){
-  if(!confirm("""+currentSet.title+"" setini silmek istediğinden emin misin?\nBu işlem geri alınamaz.")) return;
+  if(!confirm('"'+currentSet.title+'" setini silmek istediğinden emin misin?\nBu işlem geri alınamaz.')) return;
   try{
     await db.collection("users").doc(currentUser.uid).collection("sets").doc(currentSet.id).delete();
     sets=sets.filter(s=>s.id!==currentSet.id); currentSet=null; renderSets(); showScreen("dashboard");
@@ -857,7 +857,7 @@ function renderCard(){
   document.getElementById("study-prog-fill").style.width=(studyIdx/n*100)+"%";
   document.getElementById("card-word").textContent=w.word;
   document.getElementById("card-pos").textContent=w.part_of_speech||"";
-  document.getElementById("card-ex").textContent=w.example?"""+w.example+""":"";
+  document.getElementById("card-ex").textContent=w.example?'"'+w.example+'"':""
   document.getElementById("card-def").textContent=w.definition_tr;
   isFlipped=false;
   document.getElementById("flashcard").classList.remove("flipped");
