@@ -652,38 +652,25 @@ function showNewSet() {
 async function handlePhotoUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
-  
-  // Show preview
-  const title = document.getElementById('new-set-title');
-  if (!title.value) title.value = file.name.replace(/\.[^/.]+$/, '');
-  
-  // Convert to base64
-  const base64 = await new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res(reader.result.split(',')[1]);
+
+  const titleEl = document.getElementById('new-set-title');
+  if (!titleEl.value) titleEl.value = file.name.replace(/\.[^/.]+$/, '');
+
+  const base64 = await new Promise(function(res, rej) {
+    var reader = new FileReader();
+    reader.onload = function() { res(reader.result.split(',')[1]); };
     reader.onerror = rej;
     reader.readAsDataURL(file);
   });
-  
+
   const mimeType = file.type || 'image/jpeg';
   showScreen('processing');
-  
-  const prompt = `Bu görüntüdeki İngilizce metni oku ve IELTS Band 7-9 (C1-C2) seviyesinde akademik kelimeler çıkar.
 
-KURALLAR:
-- SADECE gerçek vocabulary: noun, verb, adjective, adverb
-- C1-C2 seviyesi: akademik, az kullanılan, bağlamsal anlam gerektiren kelimeler
-- HARİÇ TUT: öz isimler, yer/kişi adları, B1 ve altı basit kelimeler, kısaltmalar, sayılar
-- HARİÇ TUT: soru cümleleri, test soruları
-- 10-25 kelime çıkar
-- Kelimeleri kök/sözlük halinde yaz
-- Her kelime için metinden kısa ve gerçek bir örnek cümle kullan (8-15 kelime)
-
-SADECE aşağıdaki JSON formatında yanıt ver:
-[{"word":"...","definition_tr":"...","example":"...","part_of_speech":"noun|verb|adjective|adverb"}]`;
+  const prompt = 'Bu fotograftaki Ingilizce metni oku ve IELTS Band 7-9 (C1-C2) seviyesinde akademik kelimeler cikar.\n\nKURALLAR:\n- SADECE gercek vocabulary: noun, verb, adjective, adverb\n- C1-C2 seviyesi akademik kelimeler\n- HARIC TUT: oz isimler, B1 ve alti basit kelimeler, soru cumleleri\n- 10-25 kelime cikar, kök/sozluk halinde yaz\n- Her kelime icin metinden ornek cumle\n\nSADECE JSON formatinda yanit ver:\n[{"word":"...","definition_tr":"...","example":"...","part_of_speech":"noun|verb|adjective|adverb"}]';
 
   try {
-    const res = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=\${GEM}\`, {
+    var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=' + GEM;
+    var res = await fetch(apiUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -694,40 +681,43 @@ SADECE aşağıdaki JSON formatında yanıt ver:
         generationConfig: {temperature: 0.1}
       })
     });
-    
+
     if (res.status === 429) {
-      document.querySelector('.proc-s').innerHTML = 'Çok fazla istek, 15 saniye bekleniyor...';
-      await new Promise(r => setTimeout(r, 15000));
+      document.querySelector('.proc-s').innerHTML = 'Cok fazla istek, 15 saniye bekleniyor...';
+      await new Promise(function(r) { setTimeout(r, 15000); });
       return handlePhotoUpload(event);
     }
-    
-    const data = await res.json();
-    if (!res.ok) throw new Error(\`Gemini \${res.status}: \${data.error?.message||''}\`);
-    
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('API boş yanıt döndü');
-    
-    let words = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadı');
-    
-    words = words.filter(w => w.word && w.definition_tr).map((w,i) => ({
-      id: \`w_\${Date.now()}_\${i}\`,
-      word: w.word.trim().toLowerCase(),
-      definition_tr: w.definition_tr.trim(),
-      example: (w.example||'').trim(),
-      part_of_speech: w.part_of_speech||'word',
-      known: false,
-      selected: true
-    }));
-    
-    const autoTitle = title.value || 'Fotoğraf ' + new Date().toLocaleDateString('tr-TR');
-    pending = {title: autoTitle, words, wordCount: words.length, knownCount: 0, lastStudied: null};
+
+    var data = await res.json();
+    if (!res.ok) throw new Error('Gemini ' + res.status + ': ' + (data.error && data.error.message || ''));
+
+    var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+    if (!raw) throw new Error('API bos yanit dondu');
+
+    var words = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (!Array.isArray(words) || !words.length) throw new Error('Kelime bulunamadi');
+
+    words = words.filter(function(w) { return w.word && w.definition_tr; }).map(function(w, i) {
+      return {
+        id: 'w_' + Date.now() + '_' + i,
+        word: w.word.trim().toLowerCase(),
+        definition_tr: w.definition_tr.trim(),
+        example: (w.example || '').trim(),
+        part_of_speech: w.part_of_speech || 'word',
+        known: false,
+        selected: true
+      };
+    });
+
+    var autoTitle = titleEl.value || ('Fotograf ' + new Date().toLocaleDateString('tr-TR'));
+    pending = {title: autoTitle, words: words, wordCount: words.length, knownCount: 0, lastStudied: null};
     showPreview();
   } catch(e) {
     alert('Hata: ' + e.message);
     showScreen('new-set');
   }
 }
+
 
 async function extractWords() {
   const title = document.getElementById('new-set-title').value.trim();
