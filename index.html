@@ -555,7 +555,7 @@ function confirmCrop(){
 function processImage(base64,mimeType){
   showScreen("processing");
   var prompt = "GOREV: Bu gorseldeki Ingilizce yazili metni kelimesi kelimesine oku. Sonra sadece gorselde GERCEKTEN YAZAN kelimeler arasından IELTS C1-C2 seviyesindeki akademik kelimeleri listele.\n\nKESTIN KURALLAR:\n1. SADECE gorselde fiziksel olarak yazan kelimeleri kullan. Hayal etme, uydurma, tahmin etme.\n2. Gorsel bulanik veya okunamiyorsa, sadece okuyabildigin kelimeleri al.\n3. C1-C2 seviyesi: akademik, nadir, baglamsal anlam gerektiren kelimeler.\n4. Dis: oz isimler, A2-B1 basit kelimeler, sayilar, kisaltmalar, soru cumleleri.\n5. Her kelime icin YALNIZCA GORSELDE YAZAN metinden kisa bir ornek cumle sec.\n6. 5-20 kelime cikar. Goruntude yeterli kelime yoksa daha az cikar, ASLA UYDURMА.\n\nSADECE su JSON formatinda yanit ver, baska hicbir sey yazma:\n[{\"word\":\"..\",\"definition_tr\":\"..\",\"example\":\"(gorselden alinti cumle)\",\"part_of_speech\":\"noun|verb|adjective|adverb\"}]";
-  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEM, {
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=" + GEM, {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mimeType,data:base64}},{text:prompt}]}],generationConfig:{temperature:0.1}})
   }).then(function(r){
@@ -576,7 +576,7 @@ function extractWords(){
   if(text.length < 80){ alert("Lütfen daha uzun bir metin gir (en az 80 karakter)."); return; }
   showScreen("processing");
   var prompt = "Asagidaki Ingilizce metinden IELTS Band 7-9 (C1-C2) akademik kelimeler cikar.\nSADECE JSON dizisi don:\n[{\"word\":\"...\",\"definition_tr\":\"...\",\"example\":\"...\",\"part_of_speech\":\"noun|verb|adjective|adverb\"}]\n\nMETIN:\n" + text.substring(0,5000);
-  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEM, {
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=" + GEM, {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1}})
   }).then(function(r){
