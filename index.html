@@ -195,6 +195,11 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:var(--bg);color:var(-
       <textarea id="new-set-text" class="form-ta" placeholder="Buraya IELTS reading parçasını yapıştır..."></textarea>
       <span class="form-hint">Yapay zeka IELTS Band 7-9 seviyesindeki (C1-C2) akademik kelimeleri otomatik tespit eder.</span>
     </div>
+    <div class="divider">veya</div>
+    <div class="form-grp">
+      <button class="btn btn-secondary btn-block" onclick="createEmptySet()">&#9999;&#65039; Boş Set Oluştur, Kelimeleri Manuel Ekle</button>
+      <span class="form-hint">Set adını yukarı yaz, AI kullanmadan kendi kelimelerini tek tek ekle.</span>
+    </div>
   </div></div>
   <div class="form-foot"><div class="form-foot-in"><button class="btn btn-primary btn-block" onclick="extractWords()">&#10022; Kelimeleri Çıkart</button></div></div>
 </div>
@@ -266,12 +271,46 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:var(--bg);color:var(-
   <div class="det-hd"><div class="det-hd-in">
     <div class="det-title-row"><button class="det-back" onclick="goToDashboard()">&#8592;</button><h2 class="det-title" id="det-title"></h2><button class="det-del" onclick="deleteCurrentSet()">&#128465;</button></div>
     <p class="det-meta" id="det-meta"></p>
-    <div class="det-acts">
+    <div class="det-acts" id="det-acts">
       <button class="det-act da-all" onclick="startStudy(currentSet.id,'all')">Tümünü Çalış</button>
       <button class="det-act da-unk" onclick="startStudy(currentSet.id,'unknown')">Bilinmeyenleri Çalış</button>
     </div>
+    <button class="btn btn-secondary btn-block" style="margin-top:10px;" onclick="showAddWord()">&#10010; Kelime Ekle</button>
   </div></div>
   <div class="det-words"><div class="det-words-in" id="det-words"></div></div>
+</div>
+
+<div id="screen-add-word" class="screen">
+  <div class="topbar"><div class="topbar-in"><button class="back-btn" onclick="exitAddWord()">&#8592;</button><span class="topbar-title" id="aw-title">Kelime Ekle</span></div></div>
+  <div class="form-body"><div class="form-body-in">
+    <div class="form-grp">
+      <label class="form-lbl">İngilizce Kelime *</label>
+      <input type="text" id="aw-word" class="form-in" placeholder="ör. ubiquitous" autocapitalize="off" autocomplete="off">
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Türkçe Anlamı *</label>
+      <input type="text" id="aw-def" class="form-in" placeholder="ör. her yerde bulunan, yaygın">
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Tür <span style="color:var(--ink-3);font-weight:400;">(opsiyonel)</span></label>
+      <select id="aw-pos" class="form-in">
+        <option value="">Seçilmedi</option>
+        <option value="noun">noun</option>
+        <option value="verb">verb</option>
+        <option value="adjective">adjective</option>
+        <option value="adverb">adverb</option>
+      </select>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Örnek Cümle <span style="color:var(--ink-3);font-weight:400;">(opsiyonel)</span></label>
+      <input type="text" id="aw-ex" class="form-in" placeholder="ör. The benefits are ubiquitous in modern life.">
+    </div>
+    <p id="aw-msg" style="display:none;color:var(--green);font-size:13px;font-weight:600;"></p>
+  </div></div>
+  <div class="form-foot"><div class="form-foot-in" style="display:flex;gap:10px;">
+    <button class="btn btn-secondary" style="flex:1;" onclick="exitAddWord()">Bitti</button>
+    <button class="btn btn-primary" style="flex:2;" onclick="addManualWord()">&#10010; Ekle ve Devam Et</button>
+  </div></div>
 </div>
 <script>
 const FB = {
@@ -407,8 +446,13 @@ function renderDetail(){
   document.getElementById("det-title").textContent = currentSet.title;
   var k = currentSet.knownCount||0, t = currentSet.wordCount||0;
   document.getElementById("det-meta").textContent = t + " kelime · " + k + " biliniyor · " + (t-k) + " öğreniliyor";
+  document.getElementById("det-acts").style.display = t ? "flex" : "none";
   var container = document.getElementById("det-words");
   container.innerHTML = "";
+  if(!t){
+    container.innerHTML = "<div class='empty-state'><div class='empty-icon'>✏️</div><p class='empty-t'>Henüz kelime yok</p><p class='empty-s'>Aşağıdaki \"Kelime Ekle\" butonuyla ilk kelimeni ekle.</p></div>";
+    return;
+  }
   (currentSet.words||[]).forEach(function(w){
     var d = document.createElement("div");
     d.className = "dw" + (w.known ? " known" : "");
@@ -419,6 +463,71 @@ function renderDetail(){
     if(w.known){ var chk = document.createElement("span"); chk.className = "dw-chk"; chk.textContent = "✓"; d.appendChild(chk); }
     container.appendChild(d);
   });
+}
+
+function showAddWord(){
+  document.getElementById("aw-title").textContent = "Kelime Ekle — " + currentSet.title;
+  document.getElementById("aw-word").value = "";
+  document.getElementById("aw-def").value = "";
+  document.getElementById("aw-pos").value = "";
+  document.getElementById("aw-ex").value = "";
+  document.getElementById("aw-msg").style.display = "none";
+  showScreen("add-word");
+  setTimeout(function(){ document.getElementById("aw-word").focus(); }, 150);
+}
+
+function addManualWord(){
+  var word = document.getElementById("aw-word").value.trim();
+  var def = document.getElementById("aw-def").value.trim();
+  var pos = document.getElementById("aw-pos").value;
+  var ex = document.getElementById("aw-ex").value.trim();
+  if(!word || !def){ alert("İngilizce kelime ve Türkçe anlamı zorunlu alanlar."); return; }
+  var newWord = {
+    id: "w_" + Date.now() + "_" + Math.floor(Math.random()*10000),
+    word: word.toLowerCase(),
+    definition_tr: def,
+    example: ex,
+    part_of_speech: pos || "word",
+    known: false
+  };
+  if(!currentSet.words) currentSet.words = [];
+  currentSet.words.push(newWord);
+  currentSet.wordCount = currentSet.words.length;
+  var i = sets.findIndex(function(s){ return s.id===currentSet.id; });
+  if(i>=0) sets[i] = Object.assign({}, sets[i], {words:currentSet.words, wordCount:currentSet.wordCount});
+  db.collection("users").doc(currentUser.uid).collection("sets").doc(currentSet.id)
+    .update({words:currentSet.words, wordCount:currentSet.wordCount})
+    .then(function(){
+      document.getElementById("aw-word").value = "";
+      document.getElementById("aw-def").value = "";
+      document.getElementById("aw-pos").value = "";
+      document.getElementById("aw-ex").value = "";
+      var msg = document.getElementById("aw-msg");
+      msg.textContent = "✓ \"" + word + "\" eklendi (toplam " + currentSet.wordCount + " kelime). Yeni kelime girebilirsin.";
+      msg.style.display = "block";
+      document.getElementById("aw-word").focus();
+    })
+    .catch(function(e){ alert("Kaydetme hatası: " + e.message); });
+}
+
+function exitAddWord(){
+  renderDetail();
+  showScreen("set-detail");
+}
+
+function createEmptySet(){
+  var title = document.getElementById("new-set-title").value.trim();
+  if(!title){ alert("Önce bir set adı yaz (en üstteki kutu)."); document.getElementById("new-set-title").focus(); return; }
+  var ref = db.collection("users").doc(currentUser.uid).collection("sets").doc();
+  var data = {title:title, words:[], wordCount:0, knownCount:0, lastStudied:null, createdAt: firebase.firestore.FieldValue.serverTimestamp()};
+  ref.set(data).then(function(){
+    var ns = Object.assign({id:ref.id}, data, {createdAt:{toDate:function(){ return new Date(); }}});
+    sets.unshift(ns);
+    currentSet = ns;
+    renderDetail();
+    showScreen("set-detail");
+    setTimeout(function(){ showAddWord(); }, 250);
+  }).catch(function(e){ alert("Oluşturma hatası: " + e.message); });
 }
 function deleteCurrentSet(){
   if(!confirm(currentSet.title + " setini silmek istediğinden emin misin?\nBu işlem geri alınamaz.")) return;
@@ -555,7 +664,7 @@ function confirmCrop(){
 function processImage(base64,mimeType){
   showScreen("processing");
   var prompt = "GOREV: Bu gorseldeki Ingilizce yazili metni kelimesi kelimesine oku. Sonra sadece gorselde GERCEKTEN YAZAN kelimeler arasından IELTS C1-C2 seviyesindeki akademik kelimeleri listele.\n\nKESTIN KURALLAR:\n1. SADECE gorselde fiziksel olarak yazan kelimeleri kullan. Hayal etme, uydurma, tahmin etme.\n2. Gorsel bulanik veya okunamiyorsa, sadece okuyabildigin kelimeleri al.\n3. C1-C2 seviyesi: akademik, nadir, baglamsal anlam gerektiren kelimeler.\n4. Dis: oz isimler, A2-B1 basit kelimeler, sayilar, kisaltmalar, soru cumleleri.\n5. Her kelime icin YALNIZCA GORSELDE YAZAN metinden kisa bir ornek cumle sec.\n6. 5-20 kelime cikar. Goruntude yeterli kelime yoksa daha az cikar, ASLA UYDURMА.\n\nSADECE su JSON formatinda yanit ver, baska hicbir sey yazma:\n[{\"word\":\"..\",\"definition_tr\":\"..\",\"example\":\"(gorselden alinti cumle)\",\"part_of_speech\":\"noun|verb|adjective|adverb\"}]";
-  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + GEM, {
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=" + GEM, {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mimeType,data:base64}},{text:prompt}]}],generationConfig:{temperature:0.1}})
   }).then(function(r){
@@ -576,7 +685,7 @@ function extractWords(){
   if(text.length < 80){ alert("Lütfen daha uzun bir metin gir (en az 80 karakter)."); return; }
   showScreen("processing");
   var prompt = "Asagidaki Ingilizce metinden IELTS Band 7-9 (C1-C2) akademik kelimeler cikar.\nSADECE JSON dizisi don:\n[{\"word\":\"...\",\"definition_tr\":\"...\",\"example\":\"...\",\"part_of_speech\":\"noun|verb|adjective|adverb\"}]\n\nMETIN:\n" + text.substring(0,5000);
-  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + GEM, {
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=" + GEM, {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1}})
   }).then(function(r){
@@ -659,6 +768,7 @@ function startStudy(setId, mode){
   if(!s) return;
   currentSet = s;
   var words = (s.words||[]).slice();
+  if(!words.length){ alert("Bu sette henüz kelime yok. Önce \"Kelime Ekle\" ile kelime ekle."); return; }
   if(mode==="unknown"){
     words = words.filter(function(w){ return !w.known; });
     if(!words.length){ alert("Tüm kelimeler biliniyor! 🎉\nTümünü baştan çalışmak ister misin?"); return; }
